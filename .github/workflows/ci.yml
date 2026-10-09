@@ -1,0 +1,95 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-check:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # scripts/get_weights.sh downloads the converted weights (187 MB) from the Hub and checks the pinned sha256;
+      # c_weights/ is cached on that pin, so a run only pays for the download when the pin changes.
+      - name: Cache the weights
+        uses: actions/cache@v4
+        with:
+          path: c_weights
+          key: weights-${{ hashFiles('scripts/get_weights.sh') }}
+
+      - name: Fetch the weights
+        run: scripts/get_weights.sh
+
+      - name: Build (make)
+        run: |
+          make -C csrc
+          make -C csrc example
+          make -C csrc bench_gemm
+
+      - name: Check
+        run: make -C csrc check
+
+      - name: Build (CMake, install)
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build
+          cmake --install build --prefix "$RUNNER_TEMP/p2"
+          ls -R "$RUNNER_TEMP/p2" | head -20
+
+      - name: Scalar fallbacks
+        if: matrix.os == 'ubuntu-24.04-arm'
+        run: |
+          make -C csrc clean
+          make -C csrc CFLAGS="-O3 -ffast-math -march=native -funroll-loops -Wall -Wextra -std=c11 -pthread -DP2_SCALAR"
+          make -C csrc example CFLAGS="-O3 -ffast-math -march=native -funroll-loops -Wall -Wextra -std=c11 -pthread -DP2_SCALAR"
+          make -C csrc check
+
+      - name: Fuzz the parsers (ASan + UBSan)
+        if: matrix.os == 'ubuntu-24.04'
+        run: make -C csrc fuzz FUZZ_ITER=150
+
+      - name: Timing
+        run: |
+          ./csrc/phonon2 c_weights tests/data/4077-13754-0014.wav 2>&1 | grep -E "quantised GEMMs|total="
+          P2_GEMM=exact ./csrc/phonon2 c_weights tests/data/4077-13754-0014.wav 2>&1 | grep -E "total="
+
+  # The published archive must stay what this converter produces from Phonon-2's release, and the Hub repo's copies
+  # of the converter must stay identical to the ones here. Both are checked against the pins in get_weights.sh.
+  weights-drift:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cache Phonon-2's release tarball
+        uses: actions/cache@v4
+        with:
+          path: phonon-2.bps.tar.zst
+          key: phonon-2-release-${{ hashFiles('convert_weights.py') }}
+
+      - name: Convert from Phonon-2's release and compare with the pinned archive
+        run: |
+          pip install -r requirements.txt
+          python convert_weights.py --archive
+          file=$(sed -n 's/^WEIGHTS_FILE=//p' scripts/get_weights.sh)
+          pinned=$(sed -n 's/^WEIGHTS_SHA256=//p' scripts/get_weights.sh)
+          got=$(sha256sum "$file" | cut -d' ' -f1)
+          echo "built $got"
+          echo "pinned $pinned"
+          test "$got" = "$pinned"
+
+      - name: Hub copies of the converter are identical
+        run: |
+          repo=$(sed -n 's/^WEIGHTS_REPO=//p' scripts/get_weights.sh)
+          for f in convert_weights.py fermion_container.py; do
+            curl -fsSL -o "$RUNNER_TEMP/$f" "https://huggingface.co/$repo/resolve/main/$f"
+            cmp "$RUNNER_TEMP/$f" "$f" && echo "$f identical"
+          done

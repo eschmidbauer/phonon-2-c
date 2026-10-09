@@ -1,0 +1,19 @@
+phonon-2-c
+
+Engine code (csrc/, convert_weights.py, scripts/): MIT, see LICENSE.
+
+fermion_container.py is Fermion Research's reference reader for the
+`fermion-five-value-parakeet-v1` container, copied unchanged from
+https://huggingface.co/FermionResearch/Phonon-2 (Apache License 2.0).
+
+The weights this engine runs (Phonon-2) are Fermion Research's derivation of
+NVIDIA's parakeet-tdt-0.6b-v3 and are distributed under CC-BY-4.0; see the
+NOTICE in that repository for the attribution chain. convert_weights.py
+downloads them; this repository does not contain them.
+
+tests/data/ holds three utterances from the LibriSpeech ASR corpus
+(test-clean: 5105-28240-0004, 5639-40744-0013, 4077-13754-0014), converted
+from FLAC to 16-bit WAV, with their transcripts. LibriSpeech is by Vassil
+Panayotov, Guoguo Chen, Daniel Povey and Sanjeev Khudanpur, derived from
+LibriVox public-domain audiobooks, and is licensed CC BY 4.0
+(https://www.openslr.org/12).

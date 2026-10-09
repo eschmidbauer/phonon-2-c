@@ -1,55 +1,27 @@
-# Prerequisites
-*.d
-
-# Object files
-*.o
-*.ko
-*.obj
-*.elf
-
-# Linker output
-*.ilk
-*.map
-*.exp
-
-# Precompiled Headers
-*.gch
-*.pch
-
-# Libraries
-*.lib
-*.a
-*.la
-*.lo
-
-# Shared objects (inc. Windows DLLs)
-*.dll
-*.so
-*.so.*
-*.dylib
-
-# Executables
-*.exe
-*.out
-*.app
-*.i*86
-*.x86_64
-*.hex
-
-# Debug files
-*.dSYM/
-*.su
-*.idb
-*.pdb
-
-# Kernel Module Compile Results
-*.mod*
-*.cmd
-.tmp_versions/
-modules.order
-Module.symvers
-Mkfile.old
-dkms.conf
-
-# debug information files
-*.dwo
+.venv/
+__pycache__/
+csrc/*.o
+csrc/phonon2
+build/
+c_weights*/
+phonon-2/
+*.tar.zst
+*.tar.gz
+*.f32
+*.ref_tokens.json
+*.wav
+!tests/data/*.wav
+.claude/
+.docs/
+/data/
+csrc/bench_gemm
+csrc/fuzz_obj/
+csrc/fuzz_wav
+csrc/fuzz_weights
+csrc/fuzz_phonon2
+csrc/*.dSYM/
+tests/fuzz/crashes/
+csrc/libphonon2.a
+csrc/libphonon2.dylib
+csrc/libphonon2.so
+examples/transcribe
